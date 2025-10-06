@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-PREMIUM AI Gold Price Agent with WhatsApp Alerts
+PREMIUM AI Gold Price Agent with SMS Alerts (Indian SMS API)
 - Accurate Indian gold prices from multiple sources
 - AI-powered predictions with 10+ market factors  
-- Daily email analysis + WhatsApp alerts
-- Instant alerts for price drops and buying opportunities
+- Daily email analysis + SMS alerts via Fast2SMS
+- Instant SMS alerts for price drops and buying opportunities
 """
 
 import os
@@ -12,7 +12,6 @@ import requests
 import smtplib
 import json
 import re
-import urllib.parse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -167,7 +166,7 @@ def get_enhanced_market_factors():
     return factors
 
 def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
-    """Enhanced AI analysis with WhatsApp alert triggers"""
+    """Enhanced AI analysis with SMS alert triggers"""
     
     # Calculate weighted sentiment with more granular approach
     bullish_weight = 0
@@ -211,13 +210,13 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         if price_change_percent <= -2.0:
             alerts.append({
                 'type': 'PRICE_DROP',
-                'message': f"🚨 GOLD ALERT! 24K dropped {abs(price_change_percent):.1f}% to ₹{current_24k_price:,}/10g",
+                'message': f"GOLD ALERT! 24K dropped {abs(price_change_percent):.1f}% to Rs{current_24k_price:,}/10g - BUYING OPPORTUNITY!",
                 'urgency': 'HIGH'
             })
         elif price_change_percent >= 2.0:
             alerts.append({
                 'type': 'PRICE_SPIKE',
-                'message': f"📈 GOLD SPIKE! 24K jumped {price_change_percent:.1f}% to ₹{current_24k_price:,}/10g",
+                'message': f"GOLD SPIKE! 24K jumped {price_change_percent:.1f}% to Rs{current_24k_price:,}/10g",
                 'urgency': 'MEDIUM'
             })
     
@@ -231,7 +230,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         
         alerts.append({
             'type': 'STRONG_BUY',
-            'message': f"🚀 STRONG BUY SIGNAL! Market sentiment {sentiment_score:.0f}/100. Target: ₹{int(current_24k_price * 1.03):,}",
+            'message': f"STRONG BUY SIGNAL! AI sentiment {sentiment_score:.0f}/100. Gold Rs{current_24k_price:,}. Target Rs{int(current_24k_price * 1.03):,}",
             'urgency': 'HIGH'
         })
         
@@ -245,7 +244,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         if current_24k_price < 118000:  # Below recent average
             alerts.append({
                 'type': 'BUY_DIP',
-                'message': f"💰 BUYING OPPORTUNITY! Gold at ₹{current_24k_price:,} with bullish sentiment {sentiment_score:.0f}/100",
+                'message': f"BUYING OPPORTUNITY! Gold Rs{current_24k_price:,} with AI bullish sentiment {sentiment_score:.0f}/100",
                 'urgency': 'MEDIUM'
             })
         
@@ -270,7 +269,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         
         alerts.append({
             'type': 'CAUTION',
-            'message': f"⚠️ CAUTION: Bearish sentiment {sentiment_score:.0f}/100. Consider reducing positions.",
+            'message': f"CAUTION: AI bearish sentiment {sentiment_score:.0f}/100. Consider reducing gold positions.",
             'urgency': 'MEDIUM'
         })
         
@@ -283,7 +282,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         
         alerts.append({
             'type': 'BEARISH',
-            'message': f"🔻 BEARISH ALERT: Sentiment {sentiment_score:.0f}/100. Avoid new purchases, wait for ₹{int(current_24k_price * 0.95):,}",
+            'message': f"BEARISH ALERT: AI sentiment {sentiment_score:.0f}/100. Avoid buying, wait for Rs{int(current_24k_price * 0.95):,}",
             'urgency': 'MEDIUM'
         })
         
@@ -296,7 +295,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
         
         alerts.append({
             'type': 'SELL',
-            'message': f"🚨 SELL SIGNAL: Strong bearish sentiment {sentiment_score:.0f}/100. Consider profit booking!",
+            'message': f"SELL SIGNAL: Strong bearish AI sentiment {sentiment_score:.0f}/100. Consider profit booking!",
             'urgency': 'HIGH'
         })
     
@@ -304,7 +303,7 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
     if datetime.now().month == 10:  # October - Diwali season
         alerts.append({
             'type': 'FESTIVAL',
-            'message': f"🪔 DIWALI SEASON: Gold at ₹{current_24k_price:,}. Expect 3-7% festival premium!",
+            'message': f"DIWALI SEASON: Gold Rs{current_24k_price:,}/10g. Expect 3-7% festival premium!",
             'urgency': 'MEDIUM'
         })
     
@@ -333,37 +332,58 @@ def analyze_with_enhanced_ai(current_prices, factors, previous_prices=None):
     
     return analysis
 
-def send_whatsapp_alert(message, phone_number, api_key):
-    """Send WhatsApp alert using CallMeBot API"""
+def send_sms_alert(message, phone_number, api_key):
+    """Send SMS alert using Fast2SMS API"""
     try:
-        # URL encode the message
-        encoded_message = urllib.parse.quote(message)
+        # Fast2SMS API endpoint
+        url = "https://www.fast2sms.com/dev/bulkV2"
         
-        # Build the API URL
-        url = f"https://api.callmebot.com/whatsapp.php?phone={phone_number}&text={encoded_message}&apikey={api_key}"
+        # Clean phone number (remove +91 if present)
+        clean_number = phone_number.replace('+91', '').replace('+', '').replace('-', '').replace(' ', '')
+        
+        # Prepare payload
+        payload = {
+            'authorization': api_key,
+            'route': 'q',  # Quick SMS route (no DLT required)
+            'message': message[:160],  # SMS limit 160 characters
+            'language': 'english',
+            'flash': 0,
+            'numbers': clean_number
+        }
+        
+        headers = {
+            'authorization': api_key,
+            'Content-Type': "application/x-www-form-urlencoded",
+            'Cache-Control': "no-cache",
+        }
         
         # Send the request
-        response = requests.get(url, timeout=10)
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
         
         if response.status_code == 200:
-            print(f"✅ WhatsApp alert sent successfully!")
-            return True
+            result = response.json()
+            if result.get('return'):
+                print(f"✅ SMS alert sent successfully!")
+                return True
+            else:
+                print(f"⚠️ SMS alert failed: {result}")
+                return False
         else:
-            print(f"⚠️ WhatsApp alert failed: {response.status_code}")
+            print(f"⚠️ SMS alert failed: HTTP {response.status_code}")
             return False
             
     except Exception as e:
-        print(f"❌ WhatsApp alert error: {e}")
+        print(f"❌ SMS alert error: {e}")
         return False
 
-def process_whatsapp_alerts(analysis, prices):
-    """Process and send WhatsApp alerts based on analysis"""
+def process_sms_alerts(analysis, prices):
+    """Process and send SMS alerts based on analysis"""
     
-    whatsapp_phone = os.environ.get('WHATSAPP_PHONE')
-    whatsapp_api_key = os.environ.get('WHATSAPP_API_KEY')
+    sms_phone = os.environ.get('SMS_PHONE')
+    sms_api_key = os.environ.get('SMS_API_KEY')
     
-    if not whatsapp_phone or not whatsapp_api_key:
-        print("⚠️ WhatsApp credentials not configured - skipping alerts")
+    if not sms_phone or not sms_api_key:
+        print("⚠️ SMS credentials not configured - skipping SMS alerts")
         return False
     
     alerts_sent = 0
@@ -371,7 +391,7 @@ def process_whatsapp_alerts(analysis, prices):
     # Send high priority alerts immediately
     for alert in analysis.get('alerts', []):
         if alert.get('urgency') == 'HIGH':
-            success = send_whatsapp_alert(alert['message'], whatsapp_phone, whatsapp_api_key)
+            success = send_sms_alert(alert['message'], sms_phone, sms_api_key)
             if success:
                 alerts_sent += 1
             time.sleep(2)  # Rate limiting
@@ -379,19 +399,13 @@ def process_whatsapp_alerts(analysis, prices):
     # Send daily summary if no high priority alerts
     if alerts_sent == 0:
         current_24k = prices['24K_per_10g']
-        summary_message = f"""🏆 DAILY GOLD SUMMARY
-💰 24K: ₹{current_24k:,}/10g
-🤖 AI: {analysis['prediction']}
-📊 Sentiment: {analysis['sentiment_score']}/100
-🎯 Action: {analysis['action']}
+        summary_message = f"GOLD SUMMARY: 24K Rs{current_24k:,}/10g, AI: {analysis['prediction']}, Sentiment: {analysis['sentiment_score']}/100, Action: {analysis['action']} - Your AI Agent"
 
-Generated by your AI Gold Agent 🤖"""
-
-        success = send_whatsapp_alert(summary_message, whatsapp_phone, whatsapp_api_key)
+        success = send_sms_alert(summary_message, sms_phone, sms_api_key)
         if success:
             alerts_sent += 1
     
-    print(f"📱 WhatsApp alerts sent: {alerts_sent}")
+    print(f"📱 SMS alerts sent: {alerts_sent}")
     return alerts_sent > 0
 
 def create_enhanced_analysis_report(prices, analysis):
@@ -423,7 +437,7 @@ def create_enhanced_analysis_report(prices, analysis):
     current_22k = prices['22K_per_10g']
     
     report = f"""
-🏆 PREMIUM AI GOLD ANALYSIS WITH WHATSAPP ALERTS {trend_emoji}
+🏆 PREMIUM AI GOLD ANALYSIS WITH SMS ALERTS {trend_emoji}
 📅 {prices['timestamp']}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -455,11 +469,11 @@ Per Gram Rates:
     for factor in analysis['factor_analysis']:
         report += f"\n{factor}"
     
-    # Add WhatsApp alerts section
+    # Add SMS alerts section
     if analysis.get('alerts'):
         report += f"""
 
-📱 WHATSAPP ALERTS TRIGGERED:
+📱 SMS ALERTS TRIGGERED:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
         for alert in analysis['alerts']:
             urgency_icon = "🚨" if alert.get('urgency') == 'HIGH' else "⚠️" if alert.get('urgency') == 'MEDIUM' else "ℹ️"
@@ -488,13 +502,13 @@ Per Gram Rates:
 • Upside Target (24K): ₹{int(current_24k * 1.05):,}
 • Festival Premium: Expect 3-7% premium during Diwali week
 
-📱 WHATSAPP INTEGRATION STATUS:
+📱 SMS INTEGRATION STATUS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Instant alerts for 2%+ price drops
+✅ Instant SMS for 2%+ price drops
 ✅ Strong buy/sell signal notifications  
-✅ Daily summary messages
+✅ Daily summary SMS messages
 ✅ Festival season premium alerts
-✅ Emergency market alerts
+✅ Emergency market alerts via Fast2SMS
 
 🔔 SPECIAL MARKET ALERTS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -523,7 +537,8 @@ Per Gram Rates:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • This analysis uses MULTIPLE verified data sources for accuracy
 • Prices validated against current market benchmarks
-• WhatsApp alerts help you never miss buying opportunities
+• SMS alerts help you never miss buying opportunities
+• Fast2SMS provides reliable delivery to Indian mobile numbers
 • Recommendations based on 10+ market factors analysis
 • Always verify current prices before major transactions
 • Gold investments carry market risks - invest wisely
@@ -535,11 +550,11 @@ Per Gram Rates:
 ✅ Cross-validated against MCX and IBJA rates  
 ✅ Real-time market premium calculations
 ✅ Festival season adjustments included
-✅ WhatsApp alerts for instant notifications
+✅ SMS alerts via Fast2SMS for instant notifications
 
-Generated by Your Premium AI Gold Agent with WhatsApp 🤖📱✨
-Powered by Multi-Source Data + Instant Mobile Alerts
-Next Update: Tomorrow 6:30 AM IST + Instant Alerts
+Generated by Your Premium AI Gold Agent with SMS Alerts 🤖📱✨
+Powered by Multi-Source Data + Instant Mobile SMS Alerts
+Next Update: Tomorrow 6:30 AM IST + Instant SMS Alerts
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
     
@@ -568,7 +583,7 @@ def send_email_notification(report):
         
         # Dynamic subject with price
         today = datetime.now().strftime('%d %b %Y')
-        subject = f"🏆📱 Gold ₹{price_str} + WhatsApp Alerts - {today}"
+        subject = f"🏆📱 Gold ₹{price_str} + SMS Alerts - {today}"
         message["Subject"] = subject
         
         # Add body
@@ -593,9 +608,9 @@ def send_email_notification(report):
         return False
 
 def main():
-    """Enhanced main execution with WhatsApp integration"""
+    """Enhanced main execution with SMS integration"""
     
-    print("🚀 STARTING PREMIUM AI GOLD AGENT WITH WHATSAPP ALERTS")
+    print("🚀 STARTING PREMIUM AI GOLD AGENT WITH SMS ALERTS")
     print("=" * 70)
     print(f"🕐 Execution Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}")
     print(f"📅 Date: {datetime.now().strftime('%A, %B %d, %Y')}")
@@ -635,23 +650,23 @@ def main():
         print(f"   ❌ Error in AI analysis: {e}")
         return False
     
-    # Process WhatsApp alerts
-    print("\n📱 Step 4: Processing WhatsApp alerts...")
+    # Process SMS alerts
+    print("\n📱 Step 4: Processing SMS alerts...")
     try:
-        whatsapp_sent = process_whatsapp_alerts(analysis, current_prices)
-        if whatsapp_sent:
-            print("   ✅ WhatsApp alerts sent successfully!")
+        sms_sent = process_sms_alerts(analysis, current_prices)
+        if sms_sent:
+            print("   ✅ SMS alerts sent successfully!")
         else:
-            print("   ℹ️ No urgent WhatsApp alerts to send")
+            print("   ℹ️ No urgent SMS alerts to send")
     except Exception as e:
-        print(f"   ⚠️ WhatsApp alert error: {e}")
-        whatsapp_sent = False
+        print(f"   ⚠️ SMS alert error: {e}")
+        sms_sent = False
     
     # Create enhanced report
     print("\n📝 Step 5: Generating comprehensive analysis report...")
     try:
         report = create_enhanced_analysis_report(current_prices, analysis)
-        print("   ✅ Enhanced report with WhatsApp status generated")
+        print("   ✅ Enhanced report with SMS status generated")
     except Exception as e:
         print(f"   ❌ Error in report generation: {e}")
         return False
@@ -666,22 +681,22 @@ def main():
     
     # Final summary
     print("\n" + "=" * 70)
-    print("🎉 PREMIUM AI ANALYSIS WITH WHATSAPP COMPLETE!")
+    print("🎉 PREMIUM AI ANALYSIS WITH SMS COMPLETE!")
     print("=" * 70)
     print(f"📊 Gold Prices: ₹{current_prices['24K_per_10g']:,} (24K) | ₹{current_prices['22K_per_10g']:,} (22K)")
     print(f"🎯 Price Source: {current_prices['source']}")
     print(f"🤖 AI Prediction: {analysis['prediction']} (Confidence: {analysis['confidence']}%)")
-    print(f"📱 WhatsApp Alerts: {'✅ SENT' if whatsapp_sent else 'ℹ️ None needed'}")
+    print(f"📱 SMS Alerts: {'✅ SENT' if sms_sent else 'ℹ️ None needed'}")
     print(f"📧 Email Status: {'✅ DELIVERED' if email_sent else '❌ FAILED'}")
     print(f"🚨 Total Alerts: {len(analysis.get('alerts', []))}")
-    print(f"🕐 Next Analysis: Tomorrow at 6:30 AM IST + Instant Alerts")
+    print(f"🕐 Next Analysis: Tomorrow at 6:30 AM IST + Instant SMS Alerts")
     print("=" * 70)
     
-    if email_sent and whatsapp_sent:
-        print("🎯 PERFECT! Both email analysis AND WhatsApp alerts working!")
-        print("📱 You'll now get instant notifications for important price moves!")
+    if email_sent and sms_sent:
+        print("🎯 PERFECT! Both email analysis AND SMS alerts working!")
+        print("📱 You'll now get instant SMS notifications for important price moves!")
     elif email_sent:
-        print("🎯 Email working! Set up WhatsApp for instant alerts.")
+        print("🎯 Email working! Set up SMS for instant alerts.")
     else:
         print("⚠️ Issues detected - check GitHub Actions logs")
     
